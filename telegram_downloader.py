@@ -12,6 +12,10 @@ from typing import List, Dict
 
 from config import DEFAULT_LIMIT_PER_CHAT
 from telethon_handlers import login_with_qr, export_chat_list, export_all_chats_media
+from logger import setup_logger, get_logger, PerformanceLogger
+
+# Setup logger
+logger = get_logger("main")
 
 
 def print_banner():
@@ -414,65 +418,79 @@ async def main():
     2. Chat List Export
     3. Organized Media Download
     """
+    logger.info("=== Iniciando Telegram Media Downloader ===")
     print_banner()
 
     try:
-        # Step 1: Authentication via QR Code
-        print("🔐 ETAPA 1: AUTENTICAÇÃO")
-        client = await login_with_qr()
+        with PerformanceLogger("Complete download process", logger):
+            # Step 1: Authentication via QR Code
+            logger.info("ETAPA 1: AUTENTICAÇÃO")
+            print("🔐 ETAPA 1: AUTENTICAÇÃO")
+            client = await login_with_qr()
 
-        if not client:
-            print("❌ Falha na autenticação. Encerrando aplicação.")
-            return
+            if not client:
+                logger.error("Falha na autenticação")
+                print("❌ Falha na autenticação. Encerrando aplicação.")
+                return
 
-        # Step 2: Export chat list
-        print("\n📋 ETAPA 2: EXPORTAÇÃO DA LISTA DE CHATS")
-        chat_list = await export_chat_list(client)
+            # Step 2: Export chat list
+            logger.info("ETAPA 2: EXPORTAÇÃO DA LISTA DE CHATS")
+            print("\n📋 ETAPA 2: EXPORTAÇÃO DA LISTA DE CHATS")
+            chat_list = await export_chat_list(client)
 
-        if not chat_list:
-            print("❌ Não foi possível obter lista de chats")
-            await client.disconnect()
-            return
+            if not chat_list:
+                logger.error("Não foi possível obter lista de chats")
+                print("❌ Não foi possível obter lista de chats")
+                await client.disconnect()
+                return
 
-        # Step 3: Display chat summary
-        display_chat_summary(chat_list)
+            # Step 3: Display chat summary
+            display_chat_summary(chat_list)
 
-        # Step 4: Chat selection (for MVP, automatic selection)
-        print("\n🎯 ETAPA 3: SELEÇÃO DE CHATS")
-        selected_chats = await interactive_chat_selection(chat_list)
+            # Step 4: Chat selection (for MVP, automatic selection)
+            logger.info("ETAPA 3: SELEÇÃO DE CHATS")
+            print("\n🎯 ETAPA 3: SELEÇÃO DE CHATS")
+            selected_chats = await interactive_chat_selection(chat_list)
 
-        if not selected_chats:
-            print("ℹ️ Nenhum chat selecionado para download")
-            await client.disconnect()
-            return
+            if not selected_chats:
+                logger.info("Nenhum chat selecionado para download")
+                print("ℹ️ Nenhum chat selecionado para download")
+                await client.disconnect()
+                return
 
-        # Step 5: Media download
-        print("\n📥 ETAPA 4: DOWNLOAD DE MÍDIAS")
-        print(f"🎯 Limite de mensagens por chat: {DEFAULT_LIMIT_PER_CHAT}")
+            # Step 5: Media download
+            logger.info(f"ETAPA 4: DOWNLOAD DE MÍDIAS - {len(selected_chats)} chats selecionados")
+            print("\n📥 ETAPA 4: DOWNLOAD DE MÍDIAS")
+            print(f"🎯 Limite de mensagens por chat: {DEFAULT_LIMIT_PER_CHAT}")
 
-        successful, failed = await export_all_chats_media(
-            client, selected_chats, DEFAULT_LIMIT_PER_CHAT
-        )
+            successful, failed = await export_all_chats_media(
+                client, selected_chats, DEFAULT_LIMIT_PER_CHAT
+            )
 
-        # Final report
-        print("\n" + "=" * 60)
-        print("📊 RELATÓRIO FINAL")
-        print("=" * 60)
-        print(f"✅ Chats processados com sucesso: {successful}")
-        print(f"❌ Chats com falha: {failed}")
-        print(f"📊 Total de chats tentados: {len(selected_chats)}")
-        print(f"📁 Arquivos salvos no diretório: exports/")
+            # Final report
+            logger.info(f"Processo concluído: {successful} sucessos, {failed} falhas")
+            print("\n" + "=" * 60)
+            print("📊 RELATÓRIO FINAL")
+            print("=" * 60)
+            print(f"✅ Chats processados com sucesso: {successful}")
+            print(f"❌ Chats com falha: {failed}")
+            print(f"📊 Total de chats tentados: {len(selected_chats)}")
+            print(f"📁 Arquivos salvos no diretório: exports/")
 
-        if successful > 0:
-            print("\n🎉 DOWNLOAD CONCLUÍDO COM SUCESSO!")
-            print("📁 Verifique o diretório 'exports/' para seus arquivos")
-        else:
-            print("\n⚠️ Nenhum chat foi processado com sucesso")
+            if successful > 0:
+                logger.info("Download concluído com sucesso")
+                print("\n🎉 DOWNLOAD CONCLUÍDO COM SUCESSO!")
+                print("📁 Verifique o diretório 'exports/' para seus arquivos")
+            else:
+                logger.warning("Nenhum chat foi processado com sucesso")
+                print("\n⚠️ Nenhum chat foi processado com sucesso")
 
     except KeyboardInterrupt:
+        logger.warning("Operação interrompida pelo usuário")
         print("\n\n❌ Operação interrompida pelo usuário")
 
     except Exception as e:
+        logger.error(f"Erro durante execução: {e}", exc_info=True)
         print(f"\n❌ Erro durante execução: {e}")
         print("💡 Dica: Verifique suas credenciais da API no arquivo config.py")
 
@@ -480,8 +498,10 @@ async def main():
         # Always disconnect client
         if "client" in locals() and client:
             await client.disconnect()
+            logger.info("Cliente desconectado")
             print("🔌 Cliente desconectado")
 
+        logger.info("=== Encerrando Telegram Media Downloader ===")
         print("\n👋 Obrigado por usar o Telegram Media Downloader!")
 
 
@@ -502,10 +522,15 @@ def check_configuration():
 
 
 if __name__ == "__main__":
+    # Setup logging system
+    setup_logger(console_level="INFO", file_level="DEBUG")
+
+    logger.info("=== Sistema de logging inicializado ===")
     print("🚀 Iniciando Telegram Media Downloader...")
 
     # Check configuration first
     if not check_configuration():
+        logger.error("Configuração inválida")
         sys.exit(1)
 
     # Print usage instructions
@@ -515,6 +540,7 @@ if __name__ == "__main__":
     start_confirmation = input("❓ Deseja iniciar o processo? (s/N): ").lower().strip()
 
     if start_confirmation not in ["s", "sim", "y", "yes"]:
+        logger.info("Operação cancelada pelo usuário")
         print("❌ Operação cancelada pelo usuário")
         sys.exit(0)
 
@@ -522,7 +548,9 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
+        logger.warning("Aplicação interrompida pelo usuário")
         print("\n❌ Aplicação interrompida pelo usuário")
     except Exception as e:
+        logger.critical(f"Erro fatal: {e}", exc_info=True)
         print(f"\n❌ Erro fatal: {e}")
         sys.exit(1)

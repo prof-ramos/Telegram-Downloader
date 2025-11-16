@@ -20,7 +20,22 @@ MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB default limit
 
 # Download settings
 ENABLE_PROGRESS_BAR = True
-CONCURRENT_DOWNLOADS = 1  # Keep at 1 to avoid rate limiting
+CONCURRENT_DOWNLOADS = 3  # Increased from 1 to 3 for better performance
+
+# Logging settings
+LOG_DIRECTORY = "logs"
+CONSOLE_LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+FILE_LOG_LEVEL = "DEBUG"  # More detailed logging in files
+ENABLE_LOG_ROTATION = True
+MAX_LOG_SIZE_MB = 10  # Maximum size per log file before rotation
+LOG_BACKUP_COUNT = 5  # Number of backup log files to keep
+
+# Performance settings
+RATE_LIMIT_CALLS_PER_SECOND = 1.0  # API calls per second
+RATE_LIMIT_BURST_SIZE = 5  # Burst size before throttling
+ENABLE_ADAPTIVE_RATE_LIMITING = True  # Automatically adjust on FloodWait
+RETRY_MAX_ATTEMPTS = 3  # Maximum retry attempts for failed operations
+RETRY_BASE_DELAY = 1.0  # Base delay in seconds for retry backoff
 
 # Supported media types
 SUPPORTED_MEDIA_TYPES = ["photo", "video", "document", "audio", "voice", "sticker"]
